@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบแบ่งของรางวัล Guild Workspace</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="authGateOverlay" class="auth-gate-overlay">
+    <div class="auth-gate-shell">
+      <section class="auth-gate-copy">
+        <span class="auth-gate-eyebrow">Guild Workspace</span>
+        <h1>เข้าสู่ระบบก่อนใช้งาน</h1>
+        <p>ผู้ดูแลกิลใช้ Google เพื่อสร้างและจัดการ workspace ส่วนสมาชิกกิลใช้รหัสสมาชิกที่ผู้ดูแลสร้างจากในแอปเพื่อเข้าใช้งานได้อย่างปลอดภัย</p>
+        <div class="auth-gate-steps">
+          <div class="auth-step">
+            <strong>ผู้ดูแลกิล</strong>
+            <span>เข้าสู่ระบบด้วย Google แล้วสร้าง workspace, จัดการสมาชิก, ตั้งค่ารางวัล และสร้างรหัสสมาชิก</span>
+          </div>
+          <div class="auth-step">
+            <strong>สมาชิกกิล</strong>
+            <span>รับรหัสสมาชิกจากผู้ดูแลกิล แล้วนำมากรอกเพื่อเปิดดูข้อมูลของกิลในแอป โดยไม่มีสิทธิ์แก้ไขการตั้งค่า</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="auth-gate-card">
+        <div id="settingsPasswordGate">
+          <div class="topbar-auth-title">เข้าใช้งาน Guild Workspace</div>
+          <div class="topbar-auth-grid single-column">
+            <input type="text" id="memberAccessCodeInput" placeholder="รหัสสมาชิก เช่น A1B2-C3D4-E5">
+          </div>
+          <div class="topbar-auth-actions">
+            <button id="memberAccessButton" type="button">เข้าสู่แอปด้วยรหัสสมาชิก</button>
+          </div>
+          <div class="topbar-auth-divider"><span>หรือ</span></div>
+          <button id="googleAuthButton" type="button" class="oauth-button">
+            <span class="oauth-mark">G</span>
+            <span>ผู้ดูแลกิลเข้าสู่ระบบด้วย Google</span>
+          </button>
+          <p id="authStatusText" class="hint">ถ้าเป็นสมาชิกกิล ให้ขอรหัสสมาชิกจากผู้ดูแลกิลก่อน ส่วนผู้ดูแลกิลสามารถกด Google เพื่อสมัครหรือเข้าสู่ระบบได้ทันที</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="page-shell">
+    <header class="topbar">
+      <div class="topbar-copy">
+        <span class="topbar-kicker">Guild Control Center</span>
+        <div class="topbar-main">
+          <div class="topbar-intro">
+        <h1>ระบบแบ่งของรางวัล Guild Workspace</h1>
+        <p>แยกการใช้งานตามกิลแบบ 1 guild = 1 workspace ผู้ดูแลจัดการข้อมูล ส่วนสมาชิกใช้รหัสสมาชิกเพื่อเข้าใช้งานอย่างปลอดภัย</p>
+        <div class="topbar-footnotes">
+          <span class="topbar-note">1 Guild = 1 Workspace</span>
+          <span class="topbar-note">Admin via Google</span>
+          <span class="topbar-note">Member via Code</span>
+        </div>
+          </div>
+          <aside class="topbar-spotlight">
+            <span class="topbar-spotlight-label">How It Works</span>
+            <div class="topbar-spotlight-value">จัดการกิลได้เป็นระเบียบ</div>
+            <div class="topbar-spotlight-copy">ผู้ดูแลเข้าใช้ด้วย Google แล้วสร้างรหัสสมาชิก ส่วนสมาชิกใช้รหัสเดียวของกิลเพื่อเข้าดูข้อมูลแบบ read-only</div>
+            <div class="topbar-spotlight-list">
+              <span class="topbar-spotlight-item">Supabase Sync</span>
+              <span class="topbar-spotlight-item">Read-Only Members</span>
+              <span class="topbar-spotlight-item">Shared Guild Code</span>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <div class="topbar-side">
+        <div class="topbar-team-meta">
+          <div class="meta-chip">
+            <span class="meta-label">Workspace</span>
+            <strong id="activeWorkspaceName">ยังไม่ได้เลือก workspace</strong>
+          </div>
+          <div class="meta-chip">
+            <span class="meta-label">Guild</span>
+            <strong id="activeTeamName">ยังไม่ได้ตั้งชื่อ Guild</strong>
+          </div>
+          <div class="meta-chip">
+            <span class="meta-label">รอบแจก</span>
+            <strong id="activeSessionName">รอบหลัก</strong>
+          </div>
+        </div>
+
+        <div id="authTopbarSession" class="topbar-auth-card hidden">
+          <div class="topbar-auth-title">สถานะการเข้าใช้</div>
+          <div id="authSessionText" class="hint">ยังไม่ได้เข้าสู่ระบบ</div>
+          <div class="topbar-auth-actions">
+            <button id="settingsLogoutButton" type="button" class="secondary">ออกจากระบบ / ออกจากรหัสสมาชิก</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="app-grid">
+      <aside class="prize-panel">
+        <div class="panel-section-header">
+          <h2>ของรางวัลของ Guild</h2>
+        </div>
+
+        <div class="prize-item" data-index="0">
+          <div class="prize-icon" id="prizeIcon1">🏆</div>
+          <div class="prize-content">
+            <div class="prize-label">รางวัล 1</div>
+            <div class="prize-name" id="prizeName1">ชื่อรางวัล</div>
+            <div class="prize-count" id="prizeCount1">เหลือ 0/0 ชิ้น</div>
+            <div class="prize-batch" id="prizeBatch1">แจกคนละ 1 ชิ้น</div>
+          </div>
+          <button class="edit-prize-btn" data-index="0">แก้ไข</button>
+        </div>
+
+        <div class="prize-item" data-index="1">
+          <div class="prize-icon" id="prizeIcon2">🎁</div>
+          <div class="prize-content">
+            <div class="prize-label">รางวัล 2</div>
+            <div class="prize-name" id="prizeName2">ชื่อรางวัล</div>
+            <div class="prize-count" id="prizeCount2">เหลือ 0/0 ชิ้น</div>
+            <div class="prize-batch" id="prizeBatch2">แจกคนละ 1 ชิ้น</div>
+          </div>
+          <button class="edit-prize-btn" data-index="1">แก้ไข</button>
+        </div>
+
+        <div class="prize-item" data-index="2">
+          <div class="prize-icon" id="prizeIcon3">🎉</div>
+          <div class="prize-content">
+            <div class="prize-label">รางวัล 3</div>
+            <div class="prize-name" id="prizeName3">ชื่อรางวัล</div>
+            <div class="prize-count" id="prizeCount3">เหลือ 0/0 ชิ้น</div>
+            <div class="prize-batch" id="prizeBatch3">แจกคนละ 1 ชิ้น</div>
+          </div>
+          <button class="edit-prize-btn" data-index="2">แก้ไข</button>
+        </div>
+      </aside>
+
+      <main class="participant-panel">
+        <div class="participant-panel-header">
+          <div class="panel-header">สมาชิก Guild</div>
+          <div id="participantRoundBadge" class="participant-round-badge">รอบที่ 1</div>
+        </div>
+
+        <section class="progress-card">
+          <div class="progress-meta">
+            <strong id="progressLabel">ความคืบหน้ารอบปัจจุบัน</strong>
+            <span id="progressCounter">0/0 คน</span>
+          </div>
+          <div class="progress-track">
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+        </section>
+
+        <div id="participantGridEmpty" class="participant-grid-empty">ยังไม่มีสมาชิกใน Guild</div>
+        <div id="participantGrid" class="participant-grid"></div>
+      </main>
+
+      <aside class="action-panel">
+        <div id="controlCard" class="control-card">
+          <button id="drawAllButton" class="primary-button">แบ่งของรางวัล</button>
+          <div id="controlMeta" class="control-meta">
+            <label for="drawCountInput">แจกครั้งละกี่รายการ</label>
+            <input type="number" id="drawCountInput" min="1" value="1">
+          </div>
+          <div id="memberReadonlyHint" class="member-readonly-hint hidden">โหมดสมาชิกดูข้อมูลได้อย่างเดียว ผู้ดูแลกิลเท่านั้นที่แจกของหรือแก้ไขข้อมูลได้</div>
+        </div>
+
+        <div id="memberViewCard" class="member-view-card hidden">
+          <div class="member-view-icon">👀</div>
+          <div class="member-view-title">Member View</div>
+          <div class="member-view-copy">โหมดสมาชิกเปิดดูข้อมูลของกิลได้อย่างเดียว ไม่สามารถแจกของ แก้ไขรางวัล หรือเปลี่ยนการตั้งค่าได้</div>
+          <div class="member-view-badge">Read Only Access</div>
+          <div class="member-view-stats">
+            <div class="member-stat">
+              <span class="member-stat-label">สมาชิก</span>
+              <strong id="memberStatMembers">0</strong>
+            </div>
+            <div class="member-stat">
+              <span class="member-stat-label">แจกแล้ว</span>
+              <strong id="memberStatDistributed">0</strong>
+            </div>
+            <div class="member-stat">
+              <span class="member-stat-label">คงเหลือ</span>
+              <strong id="memberStatRemaining">0</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="wheel-card">
+          <div class="wheel-label" id="sessionSummaryCard">พร้อมสำหรับการแบ่งของในรอบนี้</div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="settings-panel">
+      <div class="settings-card">
+        <h2 class="settings-title">จัดการ Workspace, รหัสสมาชิก, Guild และรอบแจก</h2>
+
+        <div id="settingsForm" class="hidden">
+          <section class="participant-list-card">
+            <div class="participant-list-header">
+              <span>Workspace ของฉัน</span>
+              <span id="workspaceCountBadge" class="participant-count-badge">0 workspace</span>
+            </div>
+            <div class="settings-row">
+              <select id="workspaceSelect"></select>
+              <button id="loadWorkspaceButton" type="button">เปิด workspace</button>
+            </div>
+            <div id="workspaceStatusText" class="participant-empty-state">ยังไม่มี workspace</div>
+            <div class="settings-row">
+              <input type="text" id="createWorkspaceNameInput" placeholder="ชื่อ workspace เช่น Dragon Clan">
+              <input type="text" id="createWorkspaceSlugInput" placeholder="slug เช่น dragon-clan">
+              <button id="createWorkspaceButton" type="button">สร้าง workspace</button>
+            </div>
+          </section>
+
+          <section class="participant-list-card">
+            <div class="participant-list-header">
+              <span>รหัสสมาชิกของ workspace นี้</span>
+              <span class="participant-count-badge">Member Access</span>
+            </div>
+            <div id="memberAccessCodeDisplay" class="member-access-output">ยังไม่ได้สร้างรหัสสมาชิก</div>
+            <div id="memberAccessCodeHint" class="participant-empty-state">กดปุ่มด้านล่างเพื่อสร้างรหัสใหม่ รหัสเดิมจะถูกยกเลิกทันทีเมื่อสร้างใหม่</div>
+            <div class="settings-row">
+              <button id="generateMemberAccessCodeButton" type="button">สร้างรหัสสมาชิกใหม่</button>
+            </div>
+          </section>
+
+          <div class="settings-layout">
+            <section class="settings-column participant-settings-column">
+              <h3 class="settings-section-title">ข้อมูล Guild</h3>
+              <label for="teamNameInput">ชื่อ Guild</label>
+              <input id="teamNameInput" type="text" placeholder="เช่น Guild A">
+
+              <label for="sessionNameInput">ชื่อรอบแจก</label>
+              <input id="sessionNameInput" type="text" placeholder="เช่น รอบแจกเดือนนี้">
+
+              <h3 class="settings-section-title">สมาชิก Guild</h3>
+              <div class="participant-entry-row">
+                <input id="participantNameInput" type="text" placeholder="พิมพ์ชื่อสมาชิก Guild">
+                <button id="addParticipantButton" type="button">บันทึก</button>
+              </div>
+
+              <div class="participant-list-card">
+                <div class="participant-list-header">
+                  <span>รายการสมาชิก</span>
+                  <span id="participantCountBadge" class="participant-count-badge">0 คน</span>
+                </div>
+                <div id="settingsParticipantEmpty" class="participant-empty-state">ยังไม่มีสมาชิกใน Guild</div>
+                <ul id="settingsParticipantList" class="settings-participant-list"></ul>
+              </div>
+            </section>
+
+            <section class="settings-column prize-settings-column">
+              <h3 class="settings-section-title">ของรางวัลของ Guild</h3>
+
+              <div class="prize-settings">
+                <h3>รางวัล 1</h3>
+                <div class="settings-row compact-prize-row">
+                  <input id="prize1Name" placeholder="ชื่อรางวัล">
+                  <div class="settings-image-field">
+                    <input type="file" id="prize1Image" accept="image/*">
+                    <div class="image-preview settings-image-preview" id="prize1ImagePreview">ไม่มีรูป</div>
+                  </div>
+                  <input type="number" id="prize1Count" min="1" value="1" placeholder="ทั้งหมด">
+                  <input type="number" id="prize1BatchSize" min="1" value="1" placeholder="แจกคนละ">
+                </div>
+              </div>
+
+              <div class="prize-settings">
+                <h3>รางวัล 2</h3>
+                <div class="settings-row compact-prize-row">
+                  <input id="prize2Name" placeholder="ชื่อรางวัล">
+                  <div class="settings-image-field">
+                    <input type="file" id="prize2Image" accept="image/*">
+                    <div class="image-preview settings-image-preview" id="prize2ImagePreview">ไม่มีรูป</div>
+                  </div>
+                  <input type="number" id="prize2Count" min="1" value="1" placeholder="ทั้งหมด">
+                  <input type="number" id="prize2BatchSize" min="1" value="1" placeholder="แจกคนละ">
+                </div>
+              </div>
+
+              <div class="prize-settings">
+                <h3>รางวัล 3</h3>
+                <div class="settings-row compact-prize-row">
+                  <input id="prize3Name" placeholder="ชื่อรางวัล">
+                  <div class="settings-image-field">
+                    <input type="file" id="prize3Image" accept="image/*">
+                    <div class="image-preview settings-image-preview" id="prize3ImagePreview">ไม่มีรูป</div>
+                  </div>
+                  <input type="number" id="prize3Count" min="1" value="1" placeholder="ทั้งหมด">
+                  <input type="number" id="prize3BatchSize" min="1" value="1" placeholder="แจกคนละ">
+                </div>
+              </div>
+
+              <label for="settingsDrawCountInput">แจกครั้งละกี่รายการ</label>
+              <input type="number" id="settingsDrawCountInput" min="1" value="1">
+            </section>
+          </div>
+
+          <div class="settings-action-row">
+            <button id="addPrizeSetButton" class="secondary" type="button">เพิ่มชุดรางวัลรอบใหม่</button>
+            <button id="settingsSaveButton" class="secondary">บันทึก</button>
+            <button id="settingsPrizeResetButton" class="secondary" type="button">รีเซ็ตรางวัล</button>
+            <button id="settingsResetButton" class="secondary">รีเซ็ตทั้งหมด</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="prize-edit-modal hidden" id="prizeEditModal">
+      <div class="settings-dialog">
+        <button id="closePrizeEditButton" class="close-button">✕</button>
+        <h2>แก้ไขรางวัล</h2>
+
+        <label for="editPrizeName">ชื่อรางวัล</label>
+        <input id="editPrizeName" placeholder="ชื่อรางวัล">
+
+        <label for="editPrizeImage">รูปภาพ</label>
+        <div class="image-upload-row">
+          <input type="file" id="editPrizeImage" accept="image/*">
+          <div class="image-preview" id="editPrizeImagePreview">ไม่มีรูป</div>
+        </div>
+
+        <label for="editPrizeCount">จำนวนทั้งหมด</label>
+        <input type="number" id="editPrizeCount" min="1" value="1">
+
+        <label for="editPrizeBatchSize">แจกต่อคน</label>
+        <input type="number" id="editPrizeBatchSize" min="1" value="1">
+
+        <div class="settings-action-row">
+          <button id="editPrizeSaveButton" class="secondary">บันทึก</button>
+        </div>
+      </div>
+    </div>
+
+<section class="summary-section">
+      <div id="resultCard" class="result-card">
+        <h2>ผลลัพธ์การแบ่ง</h2>
+        <div id="resultRunButtons" class="result-run-buttons"></div>
+      </div>
+
+<div class="report-card">
+        <h2>ประวัติการแบ่งของรางวัล</h2>
+        <div id="historyTables"></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
