@@ -373,6 +373,12 @@ function getAuthUserLabel() {
   return authSession?.user?.email || 'ผู้ดูแลระบบ';
 }
 
+function setAuthDiagnostic(message = '') {
+  if (authStatusText) {
+    authStatusText.textContent = message;
+  }
+}
+
 function getCurrentWorkspaceSlug() {
   const querySlug = new URLSearchParams(window.location.search).get('workspace');
   return normalizeSlug(querySlug || localStorage.getItem(ACTIVE_WORKSPACE_KEY));
@@ -544,6 +550,7 @@ async function fetchMyWorkspaces() {
 
   if (error) {
     console.error('Failed to fetch workspaces.', error);
+    setAuthDiagnostic(`Google login succeeded, but Supabase workspace lookup failed: ${error.message || 'unknown error'}`);
     myWorkspaces = [];
     return;
   }
@@ -961,7 +968,7 @@ function getSessionDistributionRuns(team = getActiveTeam(), session = getActiveS
   const runMap = new Map();
 
   (session?.history || []).forEach(entry => {
-    const fallbackRunId = `${session.id}:${Math.floor((entry.time || 0) / 1000)}`;
+    const fallbackRunId = `${session.id}:${entry.time || 0}`;
     const runId = entry.distributionRunId || fallbackRunId;
 
     if (!runMap.has(runId)) {
@@ -1485,6 +1492,11 @@ async function loadInitialState() {
     const requestedSlug = getCurrentWorkspaceSlug();
     const matchedWorkspace = myWorkspaces.find(workspace => workspace.slug === requestedSlug) || myWorkspaces[0] || null;
     canManageWorkspace = Boolean(matchedWorkspace && await hasWorkspaceAdminPrivileges(matchedWorkspace.id, client));
+    setAuthDiagnostic(
+      matchedWorkspace
+        ? ''
+        : 'Google login succeeded. Supabase is connected, but this account does not own a workspace yet. Create one below to finish setup.'
+    );
     await loadWorkspaceState(matchedWorkspace);
     fillSettingsForm();
     updateAuthUI();
@@ -1545,6 +1557,11 @@ async function syncAuthState() {
       || myWorkspaces[0]
       || null;
     canManageWorkspace = Boolean(matchedWorkspace && await hasWorkspaceAdminPrivileges(matchedWorkspace.id, client));
+    setAuthDiagnostic(
+      matchedWorkspace
+        ? ''
+        : 'Google login succeeded. Supabase is connected, but this account does not own a workspace yet. Create one below to finish setup.'
+    );
     await loadWorkspaceState(matchedWorkspace);
     fillSettingsForm();
     updateAuthUI();
