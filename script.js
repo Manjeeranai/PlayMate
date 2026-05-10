@@ -1016,8 +1016,8 @@ function getAllDistributionRuns(team = getActiveTeam()) {
   );
 }
 
-function getSelectedRunForCurrentSession(team = getActiveTeam(), session = getActiveSession(team)) {
-  const runs = getSessionDistributionRuns(team, session);
+function getSelectedRun(team = getActiveTeam()) {
+  const runs = getAllDistributionRuns(team);
   if (runs.length === 0) {
     return { runs, selectedRun: null };
   }
@@ -1029,7 +1029,6 @@ function getSelectedRunForCurrentSession(team = getActiveTeam(), session = getAc
 
 function renderHistory() {
   const team = getActiveTeam();
-  const session = getActiveSession(team);
   const prizeOrderMap = new Map();
   const prizeNameMap = new Map(team.prizes.map(prize => [prize.id, prize.name]));
   const prizeNameOrderMap = new Map();
@@ -1039,7 +1038,7 @@ function renderHistory() {
     prizeNameOrderMap.set(prize.name, index);
   });
 
-  const { selectedRun } = getSelectedRunForCurrentSession(team, session);
+  const { selectedRun } = getSelectedRun(team);
   const sourceEntries = selectedRun ? selectedRun.entries : [];
   const history = sourceEntries
     .slice()
@@ -1072,7 +1071,8 @@ function renderHistory() {
 
   const selectedTitle = document.createElement('div');
   selectedTitle.className = 'history-selected-title';
-  selectedTitle.textContent = `รอบ ${session.name} | การแบ่งครั้งที่ ${selectedRun.runNumber}`;
+  selectedTitle.textContent = '';
+  selectedTitle.textContent = `รอบ ${selectedRun.sessionName} | การแบ่งครั้งที่ ${selectedRun.runNumber}`;
   historyTables.appendChild(selectedTitle);
 
   const groupedHistory = new Map();
@@ -1147,8 +1147,7 @@ function clearLatestDistributionResult() {
 
 function renderResultRunButtons() {
   const team = getActiveTeam();
-  const session = getActiveSession(team);
-  const { runs, selectedRun } = getSelectedRunForCurrentSession(team, session);
+  const { runs, selectedRun } = getSelectedRun(team);
   resultRunButtons.innerHTML = '';
 
   if (!currentWorkspace) {
@@ -1163,7 +1162,8 @@ function renderResultRunButtons() {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `result-run-button${selectedRun?.id === run.id ? ' active' : ''}`;
-    button.textContent = `การแบ่งครั้งที่ ${run.runNumber} รอบที่ ${team.sessions.findIndex(item => item.id === session.id) + 1}`;
+    button.textContent = '';
+    button.textContent = `การแบ่งครั้งที่ ${run.runNumber} รอบที่ ${run.sessionIndex}`;
     button.addEventListener('click', () => {
       selectedHistoryRunId = run.id;
       renderResultRunButtons();
