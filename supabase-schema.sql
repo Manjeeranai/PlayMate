@@ -1,4 +1,4 @@
-create extension if not exists pgcrypto;
+create extension if not exists pgcrypto with schema extensions;
 
 create table if not exists public.workspaces (
   id uuid primary key default gen_random_uuid(),
@@ -206,7 +206,7 @@ begin
   )
   values (
     candidate_workspace,
-    crypt(generated_code, gen_salt('bf')),
+    extensions.crypt(generated_code, extensions.gen_salt('bf')),
     auth.uid(),
     timezone('utc', now()),
     timezone('utc', now())
@@ -239,7 +239,7 @@ as $$
   from public.workspace_access_codes ac
   join public.workspaces w on w.id = ac.workspace_id
   join public.workspace_state ws on ws.workspace_id = w.id
-  where ac.code_hash = crypt(
+  where ac.code_hash = extensions.crypt(
     regexp_replace(upper(trim(candidate_code)), '[^A-Z0-9]', '', 'g'),
     ac.code_hash
   )

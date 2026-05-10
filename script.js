@@ -552,6 +552,9 @@ async function fetchMyWorkspaces() {
     console.error('Failed to fetch workspaces.', error);
     setAuthDiagnostic(`Google login succeeded, but Supabase workspace lookup failed: ${error.message || 'unknown error'}`);
     myWorkspaces = [];
+    if (memberAccessCodeHint) {
+      memberAccessCodeHint.textContent = 'ต้องเปิด workspace และเข้าสู่ระบบในฐานะผู้ดูแลกิลก่อน';
+    }
     return;
   }
 
@@ -575,6 +578,9 @@ function renderWorkspaceOptions() {
     option.value = '';
     option.textContent = 'ยังไม่มี workspace';
     workspaceSelect.appendChild(option);
+    if (memberAccessCodeHint) {
+      memberAccessCodeHint.textContent = `สร้างรหัสสมาชิกไม่สำเร็จ: ${error.message}`;
+    }
     return;
   }
 
@@ -2115,6 +2121,89 @@ async function distributePrizes() {
   render();
   fillSettingsForm();
   showResult(`แบ่งของเรียบร้อย: ${results.join(', ')}`);
+}
+
+async function fetchMyWorkspaces() {
+  const client = getSupabaseClient();
+  if (!client || !authSession) {
+    myWorkspaces = [];
+    return;
+  }
+
+  const { data, error } = await client
+    .from('workspace_admins')
+    .select('role, workspaces:workspace_id(id, name, slug, created_at)')
+    .eq('user_id', authSession.user.id)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Failed to fetch workspaces.', error);
+    setAuthDiagnostic(`Google login succeeded, but Supabase workspace lookup failed: ${error.message || 'unknown error'}`);
+    myWorkspaces = [];
+    return;
+  }
+
+  myWorkspaces = (data || [])
+    .map(row => ({
+      id: row.workspaces?.id,
+      name: row.workspaces?.name,
+      slug: row.workspaces?.slug,
+      role: row.role
+    }))
+    .filter(workspace => workspace.id && workspace.slug);
+}
+
+function renderWorkspaceOptions() {
+  workspaceSelect.innerHTML = '';
+  workspaceCountBadge.textContent = `${myWorkspaces.length} workspace`;
+
+  if (myWorkspaces.length === 0) {
+    workspaceStatusText.textContent = 'ยังไม่มี workspace ของคุณ สร้างใหม่ได้ด้านล่าง';
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'ยังไม่มี workspace';
+    workspaceSelect.appendChild(option);
+    return;
+  }
+
+  workspaceStatusText.textContent = currentWorkspace
+    ? `workspace ปัจจุบัน: ${currentWorkspace.name} (${currentWorkspace.slug})`
+    : 'เลือก workspace ที่ต้องการเปิด';
+
+  myWorkspaces.forEach(workspace => {
+    const option = document.createElement('option');
+    option.value = workspace.slug;
+    option.textContent = `${workspace.name} (${workspace.slug})`;
+    option.selected = currentWorkspace?.slug === workspace.slug;
+    workspaceSelect.appendChild(option);
+  });
+}
+
+async function handleGenerateMemberAccessCode() {
+  const client = getSupabaseClient();
+  if (!client || !authSession || !canManageWorkspace || !currentWorkspace?.id) {
+    if (memberAccessCodeHint) {
+      memberAccessCodeHint.textContent = 'ต้องเปิด workspace และเข้าสู่ระบบในฐานะผู้ดูแลกิลก่อน';
+    }
+    showResult('ต้องเปิด workspace และเข้าสู่ระบบในฐานะผู้ดูแลกิลก่อน');
+    return;
+  }
+
+  const { data, error } = await client.rpc('rotate_workspace_access_code', {
+    candidate_workspace: currentWorkspace.id
+  });
+
+  if (error) {
+    if (memberAccessCodeHint) {
+      memberAccessCodeHint.textContent = `สร้างรหัสสมาชิกไม่สำเร็จ: ${error.message}`;
+    }
+    showResult(`สร้างรหัสสมาชิกไม่สำเร็จ: ${error.message}`);
+    return;
+  }
+
+  latestMemberAccessCode = normalizeAccessCode(data);
+  renderMemberAccessPanel();
+  showResult(`สร้างรหัสสมาชิกใหม่แล้ว: ${formatAccessCode(latestMemberAccessCode)}`);
 }
 
 async function initializeApp() {
