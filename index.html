@@ -3,6 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    (function ensureGithubPagesTrailingSlash() {
+      const { origin, hostname, pathname, search, hash } = window.location;
+      if (!hostname.endsWith('github.io')) {
+        return;
+      }
+
+      const segments = pathname.split('/').filter(Boolean);
+      if (segments.length !== 1) {
+        return;
+      }
+
+      const repoBasePath = `/${segments[0]}`;
+      if (pathname === repoBasePath) {
+        window.location.replace(`${origin}${repoBasePath}/${search}${hash}`);
+        return;
+      }
+
+      if (pathname === `${repoBasePath}/index.html`) {
+        window.location.replace(`${origin}${repoBasePath}/${search}${hash}`);
+      }
+    }());
+  </script>
   <title>ระบบแบ่งของรางวัล Guild Workspace</title>
   <link rel="stylesheet" href="style.css">
 </head>
