@@ -408,11 +408,52 @@ function persistMemberAccessCode(code) {
 
 function getOAuthRedirectUrl(slug = getCurrentWorkspaceSlug()) {
   const normalized = normalizeSlug(slug);
-  const url = new URL(window.location.href);
+  const url = new URL(window.location.origin + window.location.pathname);
+  if (url.pathname.endsWith('/index.html')) {
+    url.pathname = url.pathname.slice(0, -'/index.html'.length) || '/';
+  }
+
+  const pathSegments = url.pathname.split('/').filter(Boolean);
+  if (window.location.hostname.endsWith('github.io') && pathSegments.length === 1) {
+    url.pathname = `/${pathSegments[0]}/`;
+  }
+
+  url.hash = '';
   if (normalized) {
     url.searchParams.set('workspace', normalized);
   }
   return url.toString();
+}
+
+function cleanupAuthRedirectParams() {
+  const url = new URL(window.location.href);
+  ['access_token', 'refresh_token', 'provider_token', 'type', 'error', 'error_description'].forEach(param => {
+    url.searchParams.delete(param);
+  });
+  window.history.replaceState({}, '', url.toString());
+}
+
+async function handleOAuthRedirect() {
+  const client = getSupabaseClient();
+  if (!client) {
+    return null;
+  }
+
+  const url = new URL(window.location.href);
+  const hasOAuthParams = ['access_token', 'refresh_token', 'provider_token', 'type', 'error'].some(param => url.searchParams.has(param));
+  if (!hasOAuthParams) {
+    return null;
+  }
+
+  const { data, error } = await client.auth.getSessionFromUrl({ storeSession: true });
+  if (error) {
+    console.error('Failed to get Supabase session from OAuth redirect URL.', error);
+    cleanupAuthRedirectParams();
+    return null;
+  }
+
+  cleanupAuthRedirectParams();
+  return data?.session || null;
 }
 
 async function hasWorkspaceAdminPrivileges(workspaceId, client = getSupabaseClient()) {
@@ -571,11 +612,18 @@ async function loadInitialState() {
     return;
   }
 
-  const { data, error } = await client.auth.getSession();
-  if (error) {
-    console.error('Failed to get auth session.', error);
+  let session = null;
+  const redirectSession = await handleOAuthRedirect();
+  if (redirectSession) {
+    session = redirectSession;
+  } else {
+    const { data, error } = await client.auth.getSession();
+    if (error) {
+      console.error('Failed to get auth session.', error);
+    }
+    session = data?.session || null;
   }
-  authSession = data?.session || null;
+  authSession = session;
   await fetchMyWorkspaces();
 
   if (authSession) {
