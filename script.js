@@ -427,9 +427,10 @@ function getOAuthRedirectUrl(slug = getCurrentWorkspaceSlug()) {
 
 function cleanupAuthRedirectParams() {
   const url = new URL(window.location.href);
-  ['access_token', 'refresh_token', 'provider_token', 'type', 'error', 'error_description'].forEach(param => {
+  ['access_token', 'refresh_token', 'provider_token', 'provider_refresh_token', 'code', 'type', 'error', 'error_code', 'error_description'].forEach(param => {
     url.searchParams.delete(param);
   });
+  url.hash = '';
   window.history.replaceState({}, '', url.toString());
 }
 
@@ -440,20 +441,54 @@ async function handleOAuthRedirect() {
   }
 
   const url = new URL(window.location.href);
-  const hasOAuthParams = ['access_token', 'refresh_token', 'provider_token', 'type', 'error'].some(param => url.searchParams.has(param));
+  const hashParams = new URLSearchParams(url.hash.startsWith('#') ? url.hash.slice(1) : url.hash);
+  const authError = hashParams.get('error_description')
+    || url.searchParams.get('error_description')
+    || hashParams.get('error')
+    || url.searchParams.get('error')
+    || '';
+  const authCode = url.searchParams.get('code') || hashParams.get('code') || '';
+  const hasOAuthParams = ['access_token', 'refresh_token', 'provider_token', 'provider_refresh_token', 'type', 'error', 'error_code']
+    .some(param => url.searchParams.has(param) || hashParams.has(param))
+    || Boolean(authCode);
+
   if (!hasOAuthParams) {
     return null;
   }
 
-  const { data, error } = await client.auth.getSessionFromUrl({ storeSession: true });
-  if (error) {
-    console.error('Failed to get Supabase session from OAuth redirect URL.', error);
+  if (authError) {
+    console.error('Supabase OAuth redirect returned an error.', authError);
+    authStatusText.textContent = `Google login failed: ${authError}`;
     cleanupAuthRedirectParams();
     return null;
   }
 
+  let session = null;
+
+  if (authCode && typeof client.auth.exchangeCodeForSession === 'function') {
+    const { data, error } = await client.auth.exchangeCodeForSession(authCode);
+    if (error) {
+      console.error('Failed to exchange Supabase OAuth code for session.', error);
+      authStatusText.textContent = `Google login failed: ${formatAuthError(error, 'login')}`;
+      cleanupAuthRedirectParams();
+      return null;
+    }
+
+    session = data?.session || null;
+  } else {
+    const { data, error } = await client.auth.getSessionFromUrl({ storeSession: true });
+    if (error) {
+      console.error('Failed to get Supabase session from OAuth redirect URL.', error);
+      authStatusText.textContent = `Google login failed: ${formatAuthError(error, 'login')}`;
+      cleanupAuthRedirectParams();
+      return null;
+    }
+
+    session = data?.session || null;
+  }
+
   cleanupAuthRedirectParams();
-  return data?.session || null;
+  return session;
 }
 
 async function hasWorkspaceAdminPrivileges(workspaceId, client = getSupabaseClient()) {
@@ -1429,11 +1464,18 @@ async function loadInitialState() {
     return;
   }
 
-  const { data, error } = await client.auth.getSession();
-  if (error) {
-    console.error('Failed to get auth session.', error);
+  let session = null;
+  const redirectSession = await handleOAuthRedirect();
+  if (redirectSession) {
+    session = redirectSession;
+  } else {
+    const { data, error } = await client.auth.getSession();
+    if (error) {
+      console.error('Failed to get auth session.', error);
+    }
+    session = data?.session || null;
   }
-  authSession = data?.session || null;
+  authSession = session;
   await fetchMyWorkspaces();
 
   if (authSession) {
